@@ -4,13 +4,13 @@ import re
 import pickle
 
 # Load your datasets
-san_pham = pd.read_csv('C:/Users/PC/Documents/NamNC/GUI_Recommender_System/San_pham.csv')
-khach_hang = pd.read_csv('C:/Users/PC/Documents/NamNC/GUI_Recommender_System/Khach_hang.csv')
-danh_gia = pd.read_csv('C:/Users/PC/Documents/NamNC/GUI_Recommender_System/Danh_gia.csv')
+san_pham = pd.read_csv('San_pham.csv')
+khach_hang = pd.read_csv('Khach_hang.csv')
+danh_gia = pd.read_csv('Danh_gia.csv')
 
-# # Load stopwords
-# with open('vietnamese-stopwords.txt', 'r', encoding="utf8") as file:
-#     stopwords = file.read().split('\n')
+# Load stopwords
+with open('vietnamese-stopwords.txt', 'r', encoding="utf8") as file:
+    stopwords = file.read().split('\n')
 
 
 # Data preprocessing and merging
@@ -24,7 +24,7 @@ df = dataframe[['ma_san_pham', 'ten_san_pham', 'mo_ta', 'so_sao']]
 # function cần thiết
 
 # Load cosine similarity matrix from the pickle file
-with open('C:/Users/PC/Documents/NamNC/GUI_Recommender_System/products_cosine_sim.pkl', 'rb') as f:
+with open('products_cosine_sim.pkl', 'rb') as f:
     cosine_sim_new = pickle.load(f)
 
 # Recommendation function
@@ -65,7 +65,7 @@ if choice == 'Yêu cầu bài toán':
 
     st.subheader("Yêu cầu bài toán")
     st.write("""
-    ### HASAKI.VN là hệ thống cửa hàng mỹ phẩm chính hãng và dịch vụ chăm sóc sắc đẹp chuyên sâu với hệ thống cửa hàng trải dài trên toàn quốc; và hiện đang là đối tác phân phối chiến lược tại thị trường Việt Nam của hàng loạt thương hiệu lớn./n
+    ### HASAKI.VN là hệ thống cửa hàng mỹ phẩm chính hãng và dịch vụ chăm sóc sắc đẹp chuyên sâu với hệ thống cửa hàng trải dài trên toàn quốc; và hiện đang là đối tác phân phối chiến lược tại thị trường Việt Nam của hàng loạt thương hiệu lớn.\n
     ### Khách hàng có thể lên đây để lựa chọn sản phẩm, xem các đánh giá/ nhận xét cũng như đặt mua sản phẩm.
     ### HASAKI.VN chưa triển khai hệ thống Recommender System giúp đề xuất sản phẩm phù hợp tới người dùng.
     """)  
@@ -94,7 +94,7 @@ elif choice == 'Xây dựng model':
 elif choice == 'Gợi ý cho người dùng':
 
     # Streamlit UI
-    st.image('C:/Users/PC/Documents/NamNC/GUI_Recommender_System/hasaki_banner.jpg')
+    st.image('hasaki_banner.jpg')
     st.title('Hệ thống gợi ý sản phẩm')
 
     # Display first 10 products
