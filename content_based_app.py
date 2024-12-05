@@ -11,9 +11,9 @@ from collections import Counter
 # nha: C:/Users/Windows 10/Downloads/Compressed/GUI_Recommender_System/
 
 # Load your datasets
-san_pham = pd.read_csv('C:/Users/Windows 10/Downloads/Compressed/GUI_Recommender_System/San_pham.csv')
-khach_hang = pd.read_csv('C:/Users/Windows 10/Downloads/Compressed/GUI_Recommender_System/Khach_hang.csv')
-danh_gia = pd.read_csv('C:/Users/Windows 10/Downloads/Compressed/GUI_Recommender_System/Danh_gia.csv')
+san_pham = pd.read_csv('San_pham.csv')
+khach_hang = pd.read_csv('Khach_hang.csv')
+danh_gia = pd.read_csv('Danh_gia.csv')
 
 # Data preprocessing and merging
 join_san_pham_danh_gia = pd.merge(danh_gia, san_pham, on='ma_san_pham', how='left')
@@ -25,7 +25,7 @@ df = dataframe[['ma_san_pham', 'ten_san_pham', 'mo_ta', 'so_sao']]
 # function cần thiết
 
 # Load cosine similarity matrix from the pickle file
-with open('C:/Users/Windows 10/Downloads/Compressed/GUI_Recommender_System/products_cosine_sim.pkl', 'rb') as f:
+with open('products_cosine_sim.pkl', 'rb') as f:
     cosine_sim_new = pickle.load(f)
 
 # Recommendation function
@@ -336,7 +336,7 @@ elif choice == 'Xây dựng model':
 elif choice == 'Gợi ý cho người dùng':
 
     # Streamlit UI
-    st.image('C:/Users/Windows 10/Downloads/Compressed/GUI_Recommender_System/hasaki_banner.jpg')
+    st.image('hasaki_banner.jpg')
     st.title('Hệ thống gợi ý sản phẩm')
 
     # Display first 10 products
