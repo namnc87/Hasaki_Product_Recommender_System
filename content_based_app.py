@@ -7,6 +7,52 @@ import seaborn as sns
 from wordcloud import WordCloud
 from collections import Counter
 
+# CSS styles
+st.markdown(
+    """
+    <style>
+        body {
+            background-color: #f5f5f5; /* Màu nền trang */
+            color: #333333; /* Màu văn bản */
+        }
+        .big-font {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff; /* Màu chữ tên sản phẩm */
+        }
+        .desc-font {
+            font-size: 16px;
+            color: #555555; /* Màu mô tả sản phẩm */
+        }
+        .header {
+            text-align: center;
+            background-color: #28a745; /* Màu nền tiêu đề xanh lá cây */
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 44px; /* Thay đổi kích thước phông chữ */
+        }
+        .tab {
+            background-color: white;
+            border-radius: 5px;
+            box-shadow: 0px 2px 5px #cccccc;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .footer {
+            text-align: center;
+            color: #777777;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+
+st.markdown('<div class="header">Hệ thống gợi ý sản phẩm</div>', unsafe_allow_html=True)
+
 # cty: C:/Users/PC/Documents/NamNC/GUI_Recommender_System/
 # nha: C:/Users/Windows 10/Downloads/Compressed/GUI_Recommender_System/
 
@@ -53,8 +99,12 @@ def get_recommendations_cosine(sp_id_or_name, cosine_sim=cosine_sim_new, nums=10
     return recommended_products
 
 def analyze_month_statistics(df, selected_product):
-    """Thống kê số lượng bình luận theo tháng và in ra tháng có số lượt comment nhiều nhất cho mã sản phẩm."""
-    
+    """Thống kê số lượng bình luận theo tháng và trực quan hóa trên biểu đồ."""
+    st.write(f"**A. Số lượng bình luận theo tháng cho sản phẩm ID '{selected_product}':**")
+
+    # Lọc dữ liệu cho sản phẩm cụ thể
+    df = df[df['ma_san_pham'] == int(selected_product)]
+
     # Convert 'ngay_binh_luan' to datetime if it's not already
     df['ngay_binh_luan'] = pd.to_datetime(df['ngay_binh_luan'], dayfirst=True)
 
@@ -65,16 +115,34 @@ def analyze_month_statistics(df, selected_product):
     # Sort by 'month' column in descending order
     month_count = month_count.sort_values(by='month', ascending=False)
 
-    # Hiển thị kết quả
-    st.write(f"**A. Số lượng bình luận theo tháng cho mã sản phẩm '{selected_product}':**")
-    st.dataframe(month_count, hide_index=True)
-
     # Lấy tháng có số lượt bình luận nhiều nhất
     if not month_count.empty:
-        max_count = month_count['count'].max()  # Get the maximum value in the 'count' column
-        top_month_row = month_count[month_count['count'] == max_count].iloc[0]  # Get the row(s) with that max count; using iloc[0] for the first if there's more than one
-        # In ra tháng có số lượng đánh giá nhiều nhất và số lượng đánh giá đó
+        max_count = month_count['count'].max()
+        top_month_row = month_count[month_count['count'] == max_count].iloc[0]
         st.write(f"Tháng có số lượt đánh giá nhiều nhất: {top_month_row['month']} với {top_month_row['count']} đánh giá.")
+
+        # Trực quan hóa bằng Matplotlib
+        plt.figure(figsize=(15, 7))
+        
+        # Vẽ biểu đồ cột
+        bars = plt.bar(month_count['month'].astype(str), month_count['count'])
+        
+        # Tiêu đề và nhãn
+        plt.title(f'Số lượng bình luận theo tháng - Sản phẩm {selected_product}', fontsize=15)
+        plt.xlabel('Tháng', fontsize=12)
+        plt.ylabel('Số lượng bình luận', fontsize=12)
+        plt.xticks(rotation=45, ha='right')
+        
+        # Thêm số lượng comment lên từng cột
+        for bar in bars:
+            height = bar.get_height()
+            plt.text(bar.get_x() + bar.get_width()/2., height,
+                     f'{int(height)}', 
+                     ha='center', va='bottom', 
+                     fontweight='bold')
+        
+        plt.tight_layout()
+        st.pyplot(plt)
     else:
         st.write("Không có bình luận nào.")
 
@@ -113,22 +181,30 @@ def analyze_comments_by_hour(df, product_id):
     st.pyplot(plt)
 
 def plot_star_ratings(danh_gia, user_input_int):
+    # Chuyển đổi user_input_int sang kiểu int nếu cần
+    user_input_int = int(user_input_int)
+    
     # Thống kê số lượng đánh giá theo từng sao
     star_ratings_count = danh_gia[danh_gia['ma_san_pham'] == user_input_int]['so_sao'].value_counts().sort_index()
-
+    
+    # Đảm bảo có đủ các mức sao từ 1 đến 5
+    full_star_ratings = pd.Series([0] * 5, index=range(1, 6))
+    full_star_ratings.update(star_ratings_count)
+    
     # Hiển thị thông tin trên Streamlit
     st.write(f"**IV. Số lượng đánh giá theo từng sao của sản phẩm vừa nhập:**")
 
     # Tạo biểu đồ dạng cột với matplotlib
     fig, ax = plt.subplots()
-    ax.bar(star_ratings_count.index, star_ratings_count.values, color='skyblue')
+    ax.bar(full_star_ratings.index, full_star_ratings.values, color='skyblue')
     ax.set_title('Số lượng đánh giá theo từng sao')
     ax.set_xlabel('Sao')
     ax.set_ylabel('Số lượng đánh giá')
+    ax.set_xticks(range(1, 6))
 
     # Thêm nhãn cho các cột
-    for i, v in enumerate(star_ratings_count.values):
-        ax.text(i+1, v, str(v), ha='center', va='bottom')
+    for i, v in enumerate(full_star_ratings.values, start=1):
+        ax.text(i, v, str(v), ha='center', va='bottom')
 
     # Trực quan hóa biểu đồ trong Streamlit
     st.pyplot(fig)
@@ -150,8 +226,10 @@ def login_page():
             st.session_state.customer_id = ma_khach_hang
             st.success("Đăng nhập thành công!")
             st.session_state.current_page = "user_products"  # Navigate to user products screen
+
         else:
             st.error("Thông tin đăng nhập không chính xác. Vui lòng thử lại.")
+    
 
 def authenticate_user(ho_ten, ma_khach_hang):
     """Authenticate user based on input."""
@@ -239,15 +317,16 @@ def logout():
 
 
 # End ham danh cho login
+
 # Common
 st.title("Data Science Project")
 st.write("##")
 
 menu = ["Yêu cầu bài toán", "Xây dựng model", "Gợi ý cho người dùng", "Đăng nhập"]
 choice = st.sidebar.selectbox('Menu', menu)
-st.sidebar.write("""#### Thành viên thực hiện:
-                 1) CHẾ THỊ ÁNH TUYỀN
-                 2) NGUYỄN CHẤN NAM""")
+st.sidebar.write("""#### Thành viên thực hiện:""")
+st.sidebar.write('1) CHẾ THỊ ÁNH TUYỀN')
+st.sidebar.write('2) NGUYỄN CHẤN NAM')
 st.sidebar.write("""#### Giảng viên hướng dẫn: """)
 st.sidebar.write("""#### Ngày báo cáo đồ án: 12/2024""")
 if choice == 'Yêu cầu bài toán':
@@ -350,81 +429,121 @@ elif choice == 'Gợi ý cho người dùng':
     # Check if the user input is empty or only whitespace
     is_input_empty = user_input.strip() == ""
 
-    # Display the "Gợi ý" button, disable it if input is empty
+    # Hiển thị nút "Gợi ý", tắt nếu input trống
     if st.button('Gợi ý', disabled=is_input_empty):
         try:
             # Kiểm tra xem có phải là mã sản phẩm hay không
             user_input_int = int(user_input)
-            recommendations = get_recommendations_cosine(user_input_int)
 
-            # Tìm thông tin sản phẩm tương ứng
+            # Lấy thông tin sản phẩm tương ứng
             product_info = df[df['ma_san_pham'] == user_input_int]
+            
             if not product_info.empty:
                 product_name = product_info['ten_san_pham'].values[0]
                 product_desc = product_info['mo_ta'].values[0]
                 product_rating = product_info['so_sao'].values[0]
-                
-                # Hiển thị thông tin sản phẩm
-                st.write(f"**I. Tên sản phẩm tương ứng mã sản phẩm vừa nhập:** {product_name}")
-                st.write(f"**II. Mô tả:** {product_desc}")
-                st.write(f"**III. Điểm trung bình:** {product_rating}")
 
-                # Thống kê số lượng đánh giá theo từng sao
-                plot_star_ratings(danh_gia, user_input_int)
+                # Lấy gợi ý
+                recommendations = get_recommendations_cosine(user_input_int)
 
-                filtered_df = df_ori[df_ori['ma_san_pham'] == int(user_input_int)]
-                analyze_month_statistics(filtered_df,user_input_int)
-                analyze_comments_by_hour(filtered_df,user_input_int)
+                # Tạo hai tab: "Thông tin sản phẩm" và "Sản phẩm gợi ý"
+                tabs = st.tabs(["Thông tin sản phẩm", "Sản phẩm gợi ý"])
+
+                # Tab 1: Thông tin sản phẩm
+                with tabs[0]:
+                    st.markdown(f"<div class='big-font'>{product_name}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='desc-font'>{product_desc}</div>", unsafe_allow_html=True)
+                    st.write(f"**I. Tên sản phẩm tương ứng mã sản phẩm vừa nhập:** {product_name}")
+                    st.write(f"**II. Mô tả:** {product_desc}")
+                    st.write(f"**III. Điểm trung bình:** {product_rating}")
+
+                    # Hiển thị thống kê số lượng đánh giá theo từng sao
+                    plot_star_ratings(danh_gia, user_input_int)
+
+                    # Phân tích thống kê
+                    filtered_df = df_ori[df_ori['ma_san_pham'] == user_input_int]
+                    analyze_month_statistics(filtered_df, user_input_int)
+                    analyze_comments_by_hour(filtered_df, user_input_int)
+
+                # Tab 2: Sản phẩm gợi ý
+                with tabs[1]:
+                    if user_input:
+                        # Lưu recommendations vào session state
+                        st.session_state.recommendations = recommendations.copy()
+
+                        # Chỉ lấy 5 sản phẩm gợi ý đầu tiên
+                        top_recommendations = st.session_state.recommendations.head(5)
+
+                        if not top_recommendations.empty:
+                            st.write("**V. Top 5 sản phẩm gợi ý:**")
+
+                            # Chuyển đổi kiểu cột 'ma_san_pham' thành kiểu string
+                            top_recommendations['ma_san_pham'] = top_recommendations['ma_san_pham'].astype(str)
+
+                            st.dataframe(top_recommendations[['ma_san_pham', 'ten_san_pham', 'mo_ta', 'so_sao']])
+
+                            # Tạo các tab cho từng sản phẩm
+                            tabs_recommendations = st.tabs([f"Sản phẩm {i + 1}" for i in range(len(top_recommendations))])
+
+                            for i, product in enumerate(top_recommendations.iterrows()):
+                                product_data = product[1]  # Lấy dữ liệu sản phẩm
+                                with tabs_recommendations[i]:
+                                    st.write(f"**Tên sản phẩm:** {product_data['ten_san_pham']}")
+                                    st.write(f"**Mô tả:** {product_data['mo_ta']}")
+                                    st.write(f"**Điểm trung bình:** {product_data['so_sao']}")
+
+                                    product_id = int(product_data['ma_san_pham'])
+                                    plot_star_ratings(danh_gia, product_id)  # Hiển thị biểu đồ đánh giá cho sản phẩm
+
+                                    # Hiển thị thêm thông tin hoặc phân tích nếu cần
+                                    filtered_df = df_ori[df_ori['ma_san_pham'] == product_id]
+                                    analyze_month_statistics(filtered_df, product_id)
+                                    analyze_comments_by_hour(filtered_df, product_id)
+                        else:
+                            st.write("Không tìm thấy sản phẩm gợi ý thỏa điều kiện.")
+
+            else:
+                st.warning('Không tìm thấy sản phẩm tương ứng với mã sản phẩm đã nhập!')
 
         except ValueError:
-            # Nếu không, xem như nhập vào là tên sản phẩm
+            # Nếu không phải mã sản phẩm số, xem như nhập vào là tên sản phẩm
             recommendations = get_recommendations_cosine(user_input)
-                        
-        # Hiển thị kết quả
-        if not recommendations.empty:
-            st.write("**V. Top 10 sản phẩm gợi ý:**")
-            
-            # Lưu recommendations vào session state nếu chưa có
-            if 'recommendations' not in st.session_state:
-                st.session_state.recommendations = recommendations.copy()
-            
-            # Chuyển đổi cột 'ma_san_pham' sang kiểu chuỗi
-            display_recs = st.session_state.recommendations.copy()
-            display_recs['ma_san_pham'] = display_recs['ma_san_pham'].astype(str)
-            
-            # Hiển thị DataFrame
-            st.dataframe(display_recs[['ma_san_pham', 'ten_san_pham', 'mo_ta', 'so_sao']])
 
-            # Tạo danh sách trình bày cho radio button
-            display_options = display_recs.apply(lambda row: f"{row['ma_san_pham']} - {row['ten_san_pham']}", axis=1).tolist()
-
-            # Thêm radio button để chọn sản phẩm
-            selected_product = st.radio(
-                "Chọn sản phẩm để xem thống kê đánh giá:", 
-                display_options,
-                key='product_radio'
-    )
-
-            # Lấy mã sản phẩm từ lựa chọn người dùng
-            selected_product_id = selected_product.split(" - ")[0]  # Lấy phần trước dấu " - "
-
-            # Nếu có sản phẩm được chọn, hiển thị biểu đồ thống kê
-            if selected_product_id:              
-                # Lọc DataFrame theo mã sản phẩm đã chọn
-                filtered_df = df_ori[df_ori['ma_san_pham'] == int(selected_product_id)]
-                
-                # Kiểm tra có bình luận nào cho mã sản phẩm này không
-                if not filtered_df.empty:
-                    plot_star_ratings(danh_gia, int(selected_product_id))
-                    analyze_month_statistics(filtered_df, selected_product_id)
-                    analyze_comments_by_hour(filtered_df, selected_product_id)
+            # Hiển thị chỉ tab "Sản phẩm gợi ý"
+            tabs = st.tabs(["Sản phẩm gợi ý"])
+            with tabs[0]:
+                if recommendations.empty:
+                    st.write("Không tìm thấy sản phẩm gợi ý thỏa điều kiện.")
                 else:
-                    st.write(f"Không có bình luận nào cho mã sản phẩm '{selected_product_id}'.")
-        else:
-            st.write("Không tìm thấy sản phẩm gợi ý thỏa điều kiện.")
+                    st.write("**V. Top 5 sản phẩm gợi ý từ tên sản phẩm:**")
+                    top_recommendations = recommendations.head(5)
+
+                    # Chuyển đổi kiểu cột 'ma_san_pham' thành kiểu string
+                    top_recommendations['ma_san_pham'] = top_recommendations['ma_san_pham'].astype(str)
+
+                    st.dataframe(top_recommendations[['ma_san_pham', 'ten_san_pham', 'mo_ta', 'so_sao']])
+
+                    # Tạo các tab cho từng sản phẩm gợi ý
+                    tabs_recommendations = st.tabs([f"Sản phẩm {i + 1}" for i in range(len(top_recommendations))])
+
+                    for i, product in enumerate(top_recommendations.iterrows()):
+                        product_data = product[1]  # Lấy dữ liệu sản phẩm
+                        with tabs_recommendations[i]:
+                            st.write(f"**Tên sản phẩm:** {product_data['ten_san_pham']}")
+                            st.write(f"**Mô tả:** {product_data['mo_ta']}")
+                            st.write(f"**Điểm trung bình:** {product_data['so_sao']}")
+
+                            product_id = product_data['ma_san_pham']
+                            plot_star_ratings(danh_gia, product_id)  # Hiển thị biểu đồ đánh giá cho sản phẩm
+
+                            # Hiển thị thêm thông tin hoặc phân tích nếu cần
+                            filtered_df = df_ori[df_ori['ma_san_pham'] == product_id]
+                            analyze_month_statistics(filtered_df, product_id)
+                            analyze_comments_by_hour(filtered_df, product_id)
+
 
 elif choice == 'Đăng nhập':
-    # Check if the user is logged in; if not, show the login page
+    # Kiểm tra xem người dùng đã đăng nhập hay chưa
     if 'current_page' not in st.session_state:
         st.session_state.current_page = "login"
 
@@ -432,63 +551,136 @@ elif choice == 'Đăng nhập':
         login_page()
     elif st.session_state.current_page == "user_products":
         show_user_products()
-        login_user_input = st.text_input("Nhập tên sản phẩm, mã sản phẩm hoặc nội dung mô tả sản phẩm:")
 
-        # Check if the user input is empty or only whitespace
+        # Khởi tạo user_reviews nếu chưa có
+        if 'user_reviews' not in st.session_state:
+            st.session_state.user_reviews = []  # Hoặc một danh sách rỗng khác tùy theo cấu trúc bạn đang sử dụng
+
+        # Nhận đầu vào từ người dùng
+        login_user_input = st.text_input("Nhập tên sản phẩm, mã sản phẩm hoặc nội dung mô tả sản phẩm:")
         login_is_input_empty = login_user_input.strip() == ""
 
-        # Display the "Gợi ý" button, disable it if input is empty
+        # Hiển thị nút "Gợi ý", nếu đầu vào không trống
         if st.button('Gợi ý', disabled=login_is_input_empty):
+            recommendations = None
+            
             try:
-                # Kiểm tra xem có phải là mã sản phẩm hay không
+                # Kiểm tra xem người dùng nhập vào có phải là mã sản phẩm không
                 login_user_input_int = int(login_user_input)
-                recommendations = get_recommendations_cosine(login_user_input)
+                product_info = df[df['ma_san_pham'] == login_user_input_int]
 
-                # Tìm thông tin sản phẩm tương ứng
-                login_product_info = df[df['ma_san_pham'] == login_user_input]
-                if not login_product_info.empty:
-                    login_product_name = login_product_info['ten_san_pham'].values[0]
-                    login_product_desc = login_product_info['mo_ta'].values[0]
-                    login_product_rating = login_product_info['so_sao'].values[0]
-                    
-                    # Hiển thị thông tin sản phẩm
-                    st.write(f"**I. Tên sản phẩm tương ứng mã sản phẩm vừa nhập:** {login_product_name}")
-                    st.write(f"**II. Mô tả:** {login_product_desc}")
-                    st.write(f"**III. Điểm trung bình:** {login_product_rating}")
+                if not product_info.empty:
+                    # Lấy thông tin sản phẩm
+                    login_product_name = product_info['ten_san_pham'].values[0]
+                    login_product_desc = product_info['mo_ta'].values[0]
+                    login_product_rating = product_info['so_sao'].values[0]
 
-                    # Thống kê số lượng đánh giá theo từng sao
-                    plot_star_ratings(danh_gia, login_user_input)
+                    # Tạo 2 tab: "Thông tin sản phẩm" và "Sản phẩm gợi ý"
+                    tabs = st.tabs(["Thông tin sản phẩm", "Sản phẩm gợi ý"])
 
-                    login_filtered_df = df_ori[df_ori['ma_san_pham'] == int(login_user_input)]
-                    analyze_month_statistics(login_filtered_df, login_user_input)
-                    analyze_comments_by_hour(login_filtered_df, login_user_input)
+                    # Tab 1: Thông tin sản phẩm
+                    with tabs[0]:
+                        st.write(f"**Tên sản phẩm:** {login_product_name}")
+                        st.write(f"**Mô tả:** {login_product_desc}")
+                        st.write(f"**Điểm trung bình:** {login_product_rating}")
+
+                        # Hiển thị biểu đồ đánh giá sao và phân tích
+                        plot_star_ratings(danh_gia, login_user_input_int)
+                        analyze_month_statistics(df_ori[df_ori['ma_san_pham'] == login_user_input_int], login_user_input_int)
+                        analyze_comments_by_hour(df_ori[df_ori['ma_san_pham'] == login_user_input_int], login_user_input_int)
+
+                    with tabs[1]:
+                        st.write("**Top 5 sản phẩm gợi ý:**")
+                        
+                        # Lưu recommendations vào session state nếu chưa có
+                        if 'recommendations' not in st.session_state:
+                            st.session_state.recommendations = recommendations.copy()
+                        else:
+                            # Cập nhật recommendations trong session state
+                            st.session_state.recommendations = recommendations.copy()
+
+                        # Chọn 5 sản phẩm gợi ý đầu tiên
+                        top_recommendations = st.session_state.recommendations.head(5)
+
+                        # Chuyển đổi kiểu cột 'ma_san_pham' thành kiểu string
+                        top_recommendations['ma_san_pham'] = top_recommendations['ma_san_pham'].astype(str)
+
+                        # Hiển thị DataFrame
+                        st.dataframe(top_recommendations)
+
+                        # Tạo các tab con cho từng sản phẩm gợi ý
+                        sub_tabs = st.tabs([f"Sản phẩm gợi ý {i+1}" for i in range(len(top_recommendations))])
+                        
+                        for i, product in enumerate(top_recommendations.iterrows()):
+                            product_data = product[1]  # Lấy dữ liệu sản phẩm gợi ý
+                            with sub_tabs[i]:
+                                st.write(f"**Tên sản phẩm:** {product_data['ten_san_pham']}")
+                                st.write(f"**Mô tả:** {product_data['mo_ta']}")
+                                st.write(f"**Điểm trung bình:** {product_data['so_sao']}")
+
+                                # Hiển thị biểu đồ hoặc phân tích khác nếu cần
+                                product_id = int(product_data['ma_san_pham'])
+                                plot_star_ratings(danh_gia, product_id)
+                                
+                                filtered_df = df_ori[df_ori['ma_san_pham'] == product_id]
+                                analyze_month_statistics(filtered_df, product_id)
+                                analyze_comments_by_hour(filtered_df, product_id)
+
+                    # Lấy gợi ý sản phẩm
+                    recommendations = get_recommendations_cosine(login_user_input_int)
 
             except ValueError:
-                # Nếu không, xem như nhập vào là tên sản phẩm
+                # Nếu không phải mã sản phẩm, coi như là nhập tên sản phẩm hoặc mô tả
                 recommendations = get_recommendations_cosine(login_user_input)
 
             # Lọc sản phẩm gợi ý đã được đánh giá bởi người dùng
-            if 'user_reviews' in st.session_state:
-                reviewed_products = st.session_state.user_reviews
+            reviewed_products = st.session_state.user_reviews
+            if recommendations is not None:
                 recommendations = recommendations[~recommendations['ma_san_pham'].isin(reviewed_products)]
 
-            # Hiển thị kết quả
-            if not recommendations.empty:
-                st.write("**Top 10 sản phẩm gợi ý:**")
-                
-                # Lưu recommendations vào session state nếu chưa có
-                if 'recommendations' not in st.session_state:
-                    st.session_state.recommendations = recommendations.copy()
-                
-                # Chuyển đổi cột 'ma_san_pham' sang kiểu chuỗi
-                display_recs = st.session_state.recommendations.copy()
-                display_recs['ma_san_pham'] = display_recs['ma_san_pham'].astype(str)
-                
-                # Hiển thị DataFrame
-                st.dataframe(display_recs[['ma_san_pham', 'ten_san_pham', 'mo_ta', 'so_sao']])
-            else:
-                st.write("Không có sản phẩm gợi ý nào do bạn đã đánh giá tất cả.")
+                # Đoạn xử lý cho tab sản phẩm gợi ý
+                if recommendations is not None and not recommendations.empty:
+                    tabs = st.tabs(["Sản phẩm gợi ý"])
+                    with tabs[0]:
+                        st.write("**Top 5 sản phẩm gợi ý:**")
+                        
+                        # Lưu recommendations vào session state nếu chưa có
+                        if 'recommendations' not in st.session_state:
+                            st.session_state.recommendations = recommendations.copy()
+                        else:
+                            # Cập nhật recommendations trong session state
+                            st.session_state.recommendations = recommendations.copy()
 
-        # Display Logout button
+                        # Chọn 5 sản phẩm gợi ý đầu tiên
+                        top_recommendations = st.session_state.recommendations.head(5)
+
+                        # Chuyển đổi kiểu cột 'ma_san_pham' thành kiểu string
+                        top_recommendations['ma_san_pham'] = top_recommendations['ma_san_pham'].astype(str)
+
+                        # Hiển thị DataFrame
+                        st.dataframe(top_recommendations)
+
+                        # Tạo các tab con cho từng sản phẩm gợi ý
+                        sub_tabs = st.tabs([f"Sản phẩm gợi ý {i+1}" for i in range(len(top_recommendations))])
+                        
+                        for i, product in enumerate(top_recommendations.iterrows()):
+                            product_data = product[1]  # Lấy dữ liệu sản phẩm gợi ý
+                            with sub_tabs[i]:
+                                st.write(f"**Tên sản phẩm:** {product_data['ten_san_pham']}")
+                                st.write(f"**Mô tả:** {product_data['mo_ta']}")
+                                st.write(f"**Điểm trung bình:** {product_data['so_sao']}")
+
+                                # Hiển thị biểu đồ hoặc phân tích khác nếu cần
+                                product_id = int(product_data['ma_san_pham'])
+                                plot_star_ratings(danh_gia, product_id)
+                                
+                                filtered_df = df_ori[df_ori['ma_san_pham'] == product_id]
+                                analyze_month_statistics(filtered_df, product_id)
+                                analyze_comments_by_hour(filtered_df, product_id)
+
+            else:
+                st.write("Không có sản phẩm gợi ý nào do bạn đã đánh giá tất cả hoặc không tìm thấy sản phẩm.")
+
+        # Hiển thị nút "Đăng xuất"
         if st.button("Đăng xuất"):
             logout()
