@@ -404,6 +404,7 @@ elif choice == 'Xây dựng model':
 
     st.write("##### 3. Xây dựng model...")
     st.write("##### 4. Evaluation")
+    st.image('RMSE_MAE.png', width=800)
     # st.code("Score train:"+ str(round(score_train,2)) + " vs Score test:" + str(round(score_test,2)))
     # st.code("Accuracy:"+str(round(acc,2)))
 
@@ -537,13 +538,12 @@ elif choice == 'Gợi ý cho người dùng':
                             plot_star_ratings(danh_gia, product_id)  # Hiển thị biểu đồ đánh giá cho sản phẩm
 
                             # Hiển thị thêm thông tin hoặc phân tích nếu cần
-                            filtered_df = df_ori[df_ori['ma_san_pham'] == product_id]
+                            filtered_df = df_ori[df_ori['ma_san_pham'] == int(product_id)]
                             analyze_month_statistics(filtered_df, product_id)
                             analyze_comments_by_hour(filtered_df, product_id)
 
 
 elif choice == 'Đăng nhập':
-    # Kiểm tra xem người dùng đã đăng nhập hay chưa
     if 'current_page' not in st.session_state:
         st.session_state.current_page = "login"
 
@@ -551,19 +551,27 @@ elif choice == 'Đăng nhập':
         login_page()
     elif st.session_state.current_page == "user_products":
         show_user_products()
-
+        
         # Khởi tạo user_reviews nếu chưa có
         if 'user_reviews' not in st.session_state:
-            st.session_state.user_reviews = []  # Hoặc một danh sách rỗng khác tùy theo cấu trúc bạn đang sử dụng
+            st.session_state.user_reviews = []
+        
+        # Khởi tạo history_search nếu chưa có
+        if 'history_search' not in st.session_state:
+            st.session_state.history_search = []
 
         # Nhận đầu vào từ người dùng
         login_user_input = st.text_input("Nhập tên sản phẩm, mã sản phẩm hoặc nội dung mô tả sản phẩm:")
         login_is_input_empty = login_user_input.strip() == ""
 
         # Hiển thị nút "Gợi ý", nếu đầu vào không trống
-        if st.button('Gợi ý', disabled=login_is_input_empty):
-            recommendations = None
-            
+        if st.button('Gợi ý', disabled=login_is_input_empty):          
+            # Ghi lại lịch sử tìm kiếm
+            st.session_state.history_search.append(login_user_input.strip())
+            # Giới hạn số lượng từ khóa trong lịch sử tìm kiếm
+            if len(st.session_state.history_search) > 10:
+                st.session_state.history_search.pop(0)  # Xóa từ khóa cũ nhất
+
             try:
                 # Kiểm tra xem người dùng nhập vào có phải là mã sản phẩm không
                 login_user_input_int = int(login_user_input)
@@ -574,6 +582,9 @@ elif choice == 'Đăng nhập':
                     login_product_name = product_info['ten_san_pham'].values[0]
                     login_product_desc = product_info['mo_ta'].values[0]
                     login_product_rating = product_info['so_sao'].values[0]
+
+                    # Lấy gợi ý
+                    recommendations = get_recommendations_cosine(login_user_input_int)
 
                     # Tạo 2 tab: "Thông tin sản phẩm" và "Sản phẩm gợi ý"
                     tabs = st.tabs(["Thông tin sản phẩm", "Sản phẩm gợi ý"])
@@ -596,13 +607,10 @@ elif choice == 'Đăng nhập':
                         if 'recommendations' not in st.session_state:
                             st.session_state.recommendations = recommendations.copy()
                         else:
-                            # Cập nhật recommendations trong session state
                             st.session_state.recommendations = recommendations.copy()
 
                         # Chọn 5 sản phẩm gợi ý đầu tiên
                         top_recommendations = st.session_state.recommendations.head(5)
-
-                        # Chuyển đổi kiểu cột 'ma_san_pham' thành kiểu string
                         top_recommendations['ma_san_pham'] = top_recommendations['ma_san_pham'].astype(str)
 
                         # Hiển thị DataFrame
@@ -612,13 +620,12 @@ elif choice == 'Đăng nhập':
                         sub_tabs = st.tabs([f"Sản phẩm gợi ý {i+1}" for i in range(len(top_recommendations))])
                         
                         for i, product in enumerate(top_recommendations.iterrows()):
-                            product_data = product[1]  # Lấy dữ liệu sản phẩm gợi ý
+                            product_data = product[1]
                             with sub_tabs[i]:
                                 st.write(f"**Tên sản phẩm:** {product_data['ten_san_pham']}")
                                 st.write(f"**Mô tả:** {product_data['mo_ta']}")
                                 st.write(f"**Điểm trung bình:** {product_data['so_sao']}")
 
-                                # Hiển thị biểu đồ hoặc phân tích khác nếu cần
                                 product_id = int(product_data['ma_san_pham'])
                                 plot_star_ratings(danh_gia, product_id)
                                 
@@ -626,51 +633,36 @@ elif choice == 'Đăng nhập':
                                 analyze_month_statistics(filtered_df, product_id)
                                 analyze_comments_by_hour(filtered_df, product_id)
 
-                    # Lấy gợi ý sản phẩm
-                    recommendations = get_recommendations_cosine(login_user_input_int)
 
             except ValueError:
-                # Nếu không phải mã sản phẩm, coi như là nhập tên sản phẩm hoặc mô tả
                 recommendations = get_recommendations_cosine(login_user_input)
 
-            # Lọc sản phẩm gợi ý đã được đánh giá bởi người dùng
             reviewed_products = st.session_state.user_reviews
             if recommendations is not None:
                 recommendations = recommendations[~recommendations['ma_san_pham'].isin(reviewed_products)]
 
-                # Đoạn xử lý cho tab sản phẩm gợi ý
                 if recommendations is not None and not recommendations.empty:
                     tabs = st.tabs(["Sản phẩm gợi ý"])
                     with tabs[0]:
                         st.write("**Top 5 sản phẩm gợi ý:**")
                         
-                        # Lưu recommendations vào session state nếu chưa có
                         if 'recommendations' not in st.session_state:
                             st.session_state.recommendations = recommendations.copy()
                         else:
-                            # Cập nhật recommendations trong session state
                             st.session_state.recommendations = recommendations.copy()
 
-                        # Chọn 5 sản phẩm gợi ý đầu tiên
                         top_recommendations = st.session_state.recommendations.head(5)
-
-                        # Chuyển đổi kiểu cột 'ma_san_pham' thành kiểu string
                         top_recommendations['ma_san_pham'] = top_recommendations['ma_san_pham'].astype(str)
 
-                        # Hiển thị DataFrame
                         st.dataframe(top_recommendations)
-
-                        # Tạo các tab con cho từng sản phẩm gợi ý
                         sub_tabs = st.tabs([f"Sản phẩm gợi ý {i+1}" for i in range(len(top_recommendations))])
                         
                         for i, product in enumerate(top_recommendations.iterrows()):
-                            product_data = product[1]  # Lấy dữ liệu sản phẩm gợi ý
+                            product_data = product[1]
                             with sub_tabs[i]:
                                 st.write(f"**Tên sản phẩm:** {product_data['ten_san_pham']}")
                                 st.write(f"**Mô tả:** {product_data['mo_ta']}")
                                 st.write(f"**Điểm trung bình:** {product_data['so_sao']}")
-
-                                # Hiển thị biểu đồ hoặc phân tích khác nếu cần
                                 product_id = int(product_data['ma_san_pham'])
                                 plot_star_ratings(danh_gia, product_id)
                                 
@@ -680,6 +672,33 @@ elif choice == 'Đăng nhập':
 
             else:
                 st.write("Không có sản phẩm gợi ý nào do bạn đã đánh giá tất cả hoặc không tìm thấy sản phẩm.")
+
+        # Hiển thị 10 từ khóa tìm kiếm gần nhất trong 3 cột
+        st.write("**10 từ khóa tìm kiếm gần nhất:**")
+
+        # Lấy các từ khóa duy nhất và sắp xếp theo thứ tự thời gian (bằng cách đảo ngược danh sách)
+        unique_searches = list(dict.fromkeys(reversed(st.session_state.history_search)))
+
+        # Giới hạn số lượng từ khóa là 10
+        unique_searches = unique_searches[:10]
+
+        # Chia màn hình thành 3 cột
+        columns = st.columns(3)
+
+        # Tính số từ khóa tối đa mỗi cột
+        num_keywords_per_column = (len(unique_searches) + 2) // 3  # Làm tròn lên
+
+        # Loop để điền vào 3 cột
+        for i in range(3):
+            with columns[i]:
+                # Lấy các từ khóa cho cột hiện tại
+                start_index = i * num_keywords_per_column
+                end_index = start_index + num_keywords_per_column
+                keywords_to_display = unique_searches[start_index:end_index]
+
+                # Hiển thị từ khóa trong cột
+                for search in keywords_to_display:
+                    st.write(f"- {search}")
 
         # Hiển thị nút "Đăng xuất"
         if st.button("Đăng xuất"):
