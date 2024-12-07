@@ -444,10 +444,6 @@ elif choice == 'Gợi ý cho người dùng':
     st.dataframe(san_pham.head(10))  # Display the first 10 products
     
 
-    # Gọi function
-    recommendations = get_recommendations_cosine(200400004)
-    recommendations
-
     user_input = st.text_input("Nhập tên sản phẩm, mã sản phẩm hoặc nội dung mô tả sản phẩm:")
 
     # Check if the user input is empty or only whitespace
