@@ -57,9 +57,9 @@ st.markdown('<div class="header">Hệ thống gợi ý sản phẩm</div>', unsa
 # nha: C:/Users/Windows 10/Downloads/Compressed/GUI_Recommender_System/
 
 # Load your datasets
-san_pham = pd.read_csv('San_pham.csv')
-khach_hang = pd.read_csv('Khach_hang.csv')
-danh_gia = pd.read_csv('Danh_gia.csv')
+san_pham = pd.read_csv('C:/Users/Windows 10/Downloads/Compressed/GUI_Recommender_System/San_pham.csv')
+khach_hang = pd.read_csv('C:/Users/Windows 10/Downloads/Compressed/GUI_Recommender_System/Khach_hang.csv')
+danh_gia = pd.read_csv('C:/Users/Windows 10/Downloads/Compressed/GUI_Recommender_System/Danh_gia.csv')
 
 # Data preprocessing and merging
 join_san_pham_danh_gia = pd.merge(danh_gia, san_pham, on='ma_san_pham', how='left')
@@ -71,30 +71,48 @@ df = dataframe[['ma_san_pham', 'ten_san_pham', 'mo_ta', 'so_sao']]
 # function cần thiết
 
 # Load cosine similarity matrix from the pickle file
-with open('products_cosine_sim.pkl', 'rb') as f:
+with open('C:/Users/Windows 10/Downloads/Compressed/GUI_Recommender_System/products_cosine_sim.pkl', 'rb') as f:
     cosine_sim_new = pickle.load(f)
 
 # Recommendation function
 def get_recommendations_cosine(sp_id_or_name, cosine_sim=cosine_sim_new, nums=10, min_rating=4):
+    # Kiểm tra cái gì được truyền vào là ID hay tên sản phẩm
     if isinstance(sp_id_or_name, int):
+        # Trường hợp người dùng nhập mã sản phẩm
         if sp_id_or_name not in df['ma_san_pham'].values:
-            return pd.DataFrame()
+            st.write(f"Sản phẩm có mã {sp_id_or_name} không tồn tại trong dữ liệu.")
+            return pd.DataFrame() # Trả về DataFrame rỗng
         idx = df.index[df['ma_san_pham'] == sp_id_or_name][0]
     else:
+        # Trường hợp người dùng nhập tên sản phẩm hoặc mô tả
         matching_products = df[df['ten_san_pham'].str.contains(sp_id_or_name, case=False, na=False) |
                                df['mo_ta'].str.contains(sp_id_or_name, case=False, na=False)]
         if matching_products.empty:
-            return pd.DataFrame()
+            st.write(f"Không tìm thấy sản phẩm nào khớp với '{sp_id_or_name}'.")
+            return pd.DataFrame() # Trả về DataFrame rỗng
+
+        # Nếu tìm thấy nhiều sản phẩm, lấy sản phẩm đầu tiên
         idx = matching_products.index[0]
 
     sim_scores = list(enumerate(cosine_sim[idx]))
     sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
-    sim_scores = sim_scores[1:nums + 1]
-
+    sim_scores = sim_scores[1:nums + 1] # Lấy nums sản phẩm tương tự nhất
     sp_indices = [i[0] for i in sim_scores]
-    recommended_products = df[['ma_san_pham', 'ten_san_pham', 'mo_ta', 'so_sao']].iloc[sp_indices]
+    sim_values = [i[1] for i in sim_scores]  # Lưu độ tương đồng cosine
+
+    # Map the sp_indices back to the original df indices
+    sp_indices = df.index[sp_indices] # Added this line
+
+    # Lọc các sản phẩm theo so_sao
+    # recommended_products = df[['ma_san_pham', 'ten_san_pham', 'mo_ta', 'so_sao']].iloc[sp_indices]
+    recommended_products = df[['ma_san_pham', 'ten_san_pham', 'mo_ta', 'so_sao']].loc[sp_indices]
     recommended_products = recommended_products[recommended_products['so_sao'] >= min_rating]
+
+    # Loại bỏ các mã sản phẩm trùng nhau, Sắp xếp theo số sao
     recommended_products = recommended_products.drop_duplicates(subset='ma_san_pham').sort_values(by='so_sao', ascending=False)
+
+    # Thêm cột độ tương đồng cosine
+    recommended_products['cosine_similarity'] = sim_values[:recommended_products.shape[0]]
 
     return recommended_products
 
@@ -325,10 +343,11 @@ st.write("##")
 menu = ["Yêu cầu bài toán", "Xây dựng model", "Gợi ý cho người dùng", "Đăng nhập"]
 choice = st.sidebar.selectbox('Menu', menu)
 st.sidebar.write("""#### Thành viên thực hiện:""")
-st.sidebar.write('1) CHẾ THỊ ÁNH TUYỀN')
+st.sidebar.write('1) CHẾ THỊ ANH TUYỀN')
 st.sidebar.write('2) NGUYỄN CHẤN NAM')
 st.sidebar.write("""#### Giảng viên hướng dẫn: """)
-st.sidebar.write("""#### Ngày báo cáo đồ án: 12/2024""")
+st.sidebar.write('KHUẤT THUỲ PHƯƠNG')
+st.sidebar.write("""#### Ngày báo cáo đồ án: 16/12/2024""")
 if choice == 'Yêu cầu bài toán':
 
     st.subheader("Yêu cầu bài toán")
@@ -404,7 +423,7 @@ elif choice == 'Xây dựng model':
 
     st.write("##### 3. Xây dựng model...")
     st.write("##### 4. Evaluation")
-    st.image('RMSE_MAE.png', width=800)
+    st.image('C:/Users/Windows 10/Downloads/Compressed/GUI_Recommender_System/RMSE_MAE.png', width=800)
     # st.code("Score train:"+ str(round(score_train,2)) + " vs Score test:" + str(round(score_test,2)))
     # st.code("Accuracy:"+str(round(acc,2)))
 
@@ -416,7 +435,7 @@ elif choice == 'Xây dựng model':
 elif choice == 'Gợi ý cho người dùng':
 
     # Streamlit UI
-    st.image('hasaki_banner.jpg')
+    st.image('C:/Users/Windows 10/Downloads/Compressed/GUI_Recommender_System/hasaki_banner.jpg')
     st.title('Hệ thống gợi ý sản phẩm')
 
     # Display first 10 products
@@ -424,6 +443,10 @@ elif choice == 'Gợi ý cho người dùng':
     san_pham['ma_san_pham'] = san_pham['ma_san_pham'].astype(str)
     st.dataframe(san_pham.head(10))  # Display the first 10 products
     
+
+    # Gọi function
+    recommendations = get_recommendations_cosine(200400004)
+    recommendations
 
     user_input = st.text_input("Nhập tên sản phẩm, mã sản phẩm hoặc nội dung mô tả sản phẩm:")
 
